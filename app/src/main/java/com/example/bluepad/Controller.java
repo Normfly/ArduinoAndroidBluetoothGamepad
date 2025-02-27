@@ -2,6 +2,7 @@ package com.example.bluepad;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -89,7 +90,7 @@ public class Controller extends AppCompatActivity {
                     if (endOfLineIndex != -1) {
                         String completeMessage = messageBuilder.substring(0, endOfLineIndex).trim();
                         messageBuilder.delete(0, endOfLineIndex + 1);
-                        handler.post(() -> updateReceivedTextView(completeMessage));
+                        handler.post(() -> processReceivedMessage(completeMessage));
                     }
                 } catch (IOException e) {
                     Log.e("Controller", "Error reading from input stream", e);
@@ -99,11 +100,33 @@ public class Controller extends AppCompatActivity {
         }).start();
     }
 
+    private void processReceivedMessage(String message) {
+        if (message.equals("AT+DISC")) {
+            disconnectAndReturnToMain();
+        } else {
+            updateReceivedTextView(message);
+        }
+    }
+
     private void updateReceivedTextView(String message) {
         if (!message.equals(currentMessage) && !message.isEmpty()) {
             receivedTextView.setText(message);
             currentMessage = message; // Update the current message
         }
+    }
+
+    private void disconnectAndReturnToMain() {
+        runOnUiThread(() -> Toast.makeText(this, "Disconnected from device", Toast.LENGTH_SHORT).show());
+        try {
+            if (bluetoothSocket != null) {
+                bluetoothSocket.close();
+            }
+        } catch (IOException e) {
+            Log.e("Controller", "Error closing socket", e);
+        }
+        Intent intent = new Intent(this, MainActivity.class);
+        startActivity(intent);
+        finish();
     }
 
     private void setupButtonListeners() {
