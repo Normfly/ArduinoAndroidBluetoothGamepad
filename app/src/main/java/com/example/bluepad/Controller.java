@@ -34,6 +34,8 @@ public class Controller extends AppCompatActivity {
     private boolean isSending = false;
     private Handler sendHandler;
     private Runnable sendRunnable;
+    private Handler atCommandHandler;
+    private Runnable atCommandRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +45,7 @@ public class Controller extends AppCompatActivity {
         receivedTextView = findViewById(R.id.textView);
         handler = new Handler(Looper.getMainLooper());
         sendHandler = new Handler(Looper.getMainLooper());
+        atCommandHandler = new Handler(Looper.getMainLooper());
 
         BluetoothDevice device = getIntent().getParcelableExtra(EXTRA_DEVICE);
         if (device != null) {
@@ -50,6 +53,7 @@ public class Controller extends AppCompatActivity {
         }
 
         setupButtonListeners();
+        startSendingATCommand();
     }
 
     private void connectToDevice(BluetoothDevice device) {
@@ -163,16 +167,18 @@ public class Controller extends AppCompatActivity {
         isSending = true;
         sendRunnable = () -> {
             if (isSending) {
-                sendCommand(String.valueOf(command));
+                sendCommand(String.valueOf(command) + "\n");
                 sendHandler.postDelayed(sendRunnable, 100); // Send command every 100ms
             }
         };
         sendHandler.post(sendRunnable);
+        stopSendingATCommand();
     }
 
     private void stopSendingCommand() {
         isSending = false;
         sendHandler.removeCallbacks(sendRunnable);
+        startSendingATCommand();
     }
 
     private void sendCommand(String command) {
@@ -183,6 +189,20 @@ public class Controller extends AppCompatActivity {
                 Log.e("Controller", "Error sending command", e);
             }
         }
+    }
+
+    private void startSendingATCommand() {
+        atCommandRunnable = () -> {
+            if (!isSending) {
+                sendCommand("AT\n");
+                atCommandHandler.postDelayed(atCommandRunnable, 5000); // Send AT command every 5 seconds
+            }
+        };
+        atCommandHandler.post(atCommandRunnable);
+    }
+
+    private void stopSendingATCommand() {
+        atCommandHandler.removeCallbacks(atCommandRunnable);
     }
 
     @Override
